@@ -12,7 +12,7 @@ import sys
 class HelpfulUtils:
     def __init__(self, bot):
         self.bot = bot
-        self.version = "2016-09-07 v.1"
+        self.version = "2016-09-16 v.1"
         try:
             self.config = dataIO.load_json("./data/helpful_utils.json")  # because this cog only uses one json file,
             # I might as well just store it in ./data
@@ -135,7 +135,6 @@ class HelpfulUtils:
             prefixes += "\"" + i + "\" "
         await self.bot.say("My current prefixes: {0}".format(prefixes))
 
-    @checks.is_owner()
     @group_cmd.command(name="version")
     async def version_cmd(self):
         """Check the helpful utils version."""
