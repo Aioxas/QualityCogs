@@ -190,7 +190,8 @@ class BetterAudio:
             await self.bot.say("You need to be in a voice channel.")
             return
         if re.match(r"^http(s)?\:\/\/soundcloud\.com\/[0-9a-zA-Z\-]*\/[0-9a-zA-Z\-]*", url) or \
-                re.match(r"^http(s)?\:\/\/twitch\.tv\/[0-9a-zA-Z\-]*\/[0-9a-zA-Z\-]*", url):  # match supported links
+                re.match(r"^http(s)?\:\/\/twitch\.tv\/[0-9a-zA-Z\-]*$", url) or \
+                re.match(r"^http(s)?:\/\/(www.)?(m.)?youtube\.com\/watch\?v=.{11}$", url):  # match supported links
             info = self.get_url_info(url)
             if "entries" in info:
                 await self.bot.say("Adding a playlist, this may take a while...")
