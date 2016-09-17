@@ -132,7 +132,7 @@ class BetterAudio:
                             for i in self.playing:
                                 if self.playing[i] != {}:
                                     playing = self.playing[i]
-                            print(playing)
+                            # noinspection PyUnboundLocalVariable
                             status = "{title} - {author}".format(**playing)
                             if status != self.old_status:
                                 await self.bot.change_status(game=discord.Game(name=status))
