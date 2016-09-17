@@ -1,1 +1,3 @@
-sh 'flake8 --ignore E501 .'
+node {
+    sh 'flake8 --ignore E501 .'
+}
