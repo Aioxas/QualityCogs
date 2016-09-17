@@ -1,5 +1,5 @@
 node {
     stage('Check PEP-8') {
-        sh 'flake8 --ignore E501 .'
+        sh 'flake8 --max-line-length=120 --show-source .'
     }
 }
