@@ -2,6 +2,7 @@ import asyncio
 import discord
 import youtube_dl
 import re
+import random
 # noinspection PyUnresolvedReferences
 from __main__ import send_cmd_help
 from discord.ext import commands
@@ -197,6 +198,7 @@ class BetterAudio:
                 await self.bot.say("Adding a playlist, this may take a while...")
                 placeholder_msg = await self.bot.say("​")
                 added = 0
+                total = len(info["entries"])
                 length = playlist_length
                 urls = []
                 for i in info["entries"]:
@@ -210,12 +212,14 @@ class BetterAudio:
                         info = self.get_url_info(url)
                         title = info["title"]
                         author = info["uploader"]
-                        assembled_queue = {"url": url, "song_owner": ctx.message.author, "title": title, "author": author}
+                        assembled_queue = {"url": url, "song_owner": ctx.message.author,
+                                           "title": title, "author": author}
                         self.queues[ctx.message.server.id].append(assembled_queue)
                         added += 1
                         placeholder_msg = await self.bot.edit_message(placeholder_msg,
-                                                                      "Successfully added {1} - {0} to the queue!"
-                                                                      .format(title, author))
+                                                                      "Successfully added {1} - {0} to the queue!\n"
+                                                                      "({2}/{3})"
+                                                                      .format(title, author, added, total))
                         await asyncio.sleep(1)
                     except:
                         await self.bot.say("Unable to add <{0}> to the queue. Skipping.".format(url))
@@ -266,6 +270,15 @@ class BetterAudio:
         if self.players[ctx.message.server.id] is not None:
             self.players[ctx.message.server.id].stop()
         await self.bot.say("Playback stopped.")
+
+    @checks.mod_or_permissions(move_members=True)
+    @commands.command(pass_context=True, no_pm=True)
+    async def shuffle(self, ctx):
+        """Shuffles the queue."""
+        queue = self.queues[ctx.message.server.id]
+        random.shuffle(queue)
+        self.queues[ctx.message.server.id] = queue
+        await self.bot.say("Queue shuffled.")
 
     @checks.mod_or_permissions(move_members=True)
     @commands.command(pass_context=True, no_pm=True)
