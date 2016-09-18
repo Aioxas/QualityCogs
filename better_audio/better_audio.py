@@ -97,7 +97,6 @@ class BetterAudio:
                             self.playing[sid]["author"] = next_song["author"]
                             self.playing[sid]["url"] = next_song["url"]
                             self.playing[sid]["song_owner"] = next_song["song_owner"]
-                            # TODO: Playlists and Now Playing annoucements!
                         except:  # in case something bad happens, crashing the loop is *really* undesirable
                             pass
                     else:
@@ -345,9 +344,6 @@ class BetterAudio:
             self.db["global"]["playing_status"] = True
             self.save_db()
             await self.bot.say("Playing messages enabled.")
-
-    # TODO: global settings? (add them to existing commands maybe?)
-    # TODO: Auto-summon the bot into a specific channel?
 
 
 def setup(bot):
