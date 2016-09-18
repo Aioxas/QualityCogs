@@ -5,5 +5,6 @@ node {
     }
 }
 node {
+    sleep 1
     step([$class: 'GitHubCommitStatusSetter'])
 }
