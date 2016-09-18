@@ -4,4 +4,6 @@ node {
         sh 'flake8 --max-line-length=120 --show-source .'
     }
 }
-step([$class: 'GitHubCommitStatusSetter'])
+node {
+    step([$class: 'GitHubCommitStatusSetter'])
+}
