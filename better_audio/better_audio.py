@@ -242,7 +242,7 @@ class BetterAudio:
         queue = self.queues[ctx.message.server.id]
         if queue:
             number = 1
-            human_queue = ""
+            human_queue = "​\n"
             for i in queue:
                 human_queue += "**{0}".format(number) + ".** **{author}** - " \
                                                         "**{title}** added by {song_owner}\n".format(**i)
@@ -335,6 +335,11 @@ class BetterAudio:
             await self.bot.say("Skip threshold set to {0}%.".format(int(percentage * 100)))
         else:
             await self.bot.say("Try a threshold between 0 and 100.")
+
+    @checks.mod_or_permissions(move_members=True)
+    @audioset_cmd.command(pass_context=True, no_pm=True)
+    async def lock(self):
+        """Locks the bot to your voice channel and summons it there permanently."""
 
     @checks.is_owner()
     @audioset_cmd.command()
