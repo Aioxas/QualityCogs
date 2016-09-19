@@ -53,8 +53,12 @@ class BetterAudio:
                     self.voice_clients[server.id] = None
                 if server.id not in self.queues:  # create queues
                     self.queues[server.id] = []
-                if server.id not in self.db:  # set defaults
-                    self.db[server.id] = {"volume": 1.0, "vote_percentage": 0.5}
+                if server.id not in self.db:  # set defaults for servers
+                    self.db[server.id] = {}
+                if "volume" not in self.db[server.id]:  # backwards-compatibility
+                    self.db[server.id]["volume"] = 1.0
+                if "vote_percentage" not in self.db[server.id]:
+                    self.db[server.id]["vote_percentage"] = 0.5
                 if server.id not in self.skip_votes:  # create skip_votes list of Members
                     self.skip_votes[server.id] = []
 
@@ -326,7 +330,7 @@ class BetterAudio:
         """Sets the vote ratio required to skip a song."""
         percentage /= 100
         if 0 < percentage < 1:
-            self.db[ctx.message.server.id]["vote_percentage"] = (percentage / 100)
+            self.db[ctx.message.server.id]["vote_percentage"] = percentage
             self.save_db()
             await self.bot.say("Skip threshold set to {0}%.".format(int(percentage * 100)))
         else:
