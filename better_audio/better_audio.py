@@ -154,8 +154,8 @@ class BetterAudio:
 
             await asyncio.sleep(1)
 
-    @commands.command(pass_context=True, aliases=["np", "song"], no_pm=True)
-    async def playing(self, ctx):
+    @commands.command(pass_context=True, name="playing", aliases=["np", "song"], no_pm=True)
+    async def playing_cmd(self, ctx):
         """Shows the currently playing song."""
         if ctx.message.server.id in self.playing:
             playing = self.playing[ctx.message.server.id]
