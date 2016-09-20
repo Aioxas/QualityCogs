@@ -154,8 +154,8 @@ class BetterAudio:
 
             await asyncio.sleep(1)
 
-    @commands.command(pass_context=True, no_pm=True)
-    async def np(self, ctx):
+    @commands.command(pass_context=True, aliases=["np", "song"], no_pm=True)
+    async def playing(self, ctx):
         """Shows the currently playing song."""
         if ctx.message.server.id in self.playing:
             playing = self.playing[ctx.message.server.id]
@@ -242,7 +242,7 @@ class BetterAudio:
         queue = self.queues[ctx.message.server.id]
         if queue:
             number = 1
-            human_queue = "​\n"
+            human_queue = ""
             for i in queue:
                 human_queue += "**{0}".format(number) + ".** **{author}** - " \
                                                         "**{title}** added by {song_owner}\n".format(**i)
