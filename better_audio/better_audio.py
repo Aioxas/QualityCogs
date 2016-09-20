@@ -49,8 +49,6 @@ class BetterAudio:
             for server in self.bot.servers:  # set nonexistent voice clients and players to None
                 if server.id not in self.players:
                     self.players[server.id] = None
-                if server.id not in self.voice_clients:
-                    self.voice_clients[server.id] = None
                 if server.id not in self.queues:  # create queues
                     self.queues[server.id] = []
                 if server.id not in self.db:  # set defaults for servers
@@ -61,6 +59,7 @@ class BetterAudio:
                     self.db[server.id]["vote_percentage"] = 0.5
                 if server.id not in self.skip_votes:  # create skip_votes list of Members
                     self.skip_votes[server.id] = []
+                self.voice_clients[server.id] = self.bot.voice_client_in(server)
 
             for sid in self.players:  # clean up dead players
                 player = self.players[sid]
