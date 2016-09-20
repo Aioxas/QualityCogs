@@ -20,12 +20,12 @@ class BetterAudio:
         except FileNotFoundError:
             self.db = {}
         self.loop = self.bot.loop.create_task(self.maintenance_loop())
-        self.playing = {}
-        self.queues = {}
-        self.skip_votes = {}
-        self.voice_clients = {}
-        self.players = {}
-        self.old_status = None
+        self.playing = {}  # what's playing, imported from queue
+        self.queues = {}  # what's in the queue
+        self.skip_votes = {}  # votes to skip, per song
+        self.voice_clients = {}  # voice clients
+        self.players = {}  # players
+        self.old_status = None  # remembering the old status messages so we don't abuse the Discord API
 
     def __unload(self):
         self.loop.cancel()
@@ -155,7 +155,7 @@ class BetterAudio:
             await asyncio.sleep(1)
 
     @commands.command(pass_context=True, name="playing", aliases=["np", "song"], no_pm=True)
-    async def playing_cmd(self, ctx):
+    async def playing_cmd(self, ctx):  # aliased so people who aren't used to it can still use it's commands
         """Shows the currently playing song."""
         if ctx.message.server.id in self.playing:
             playing = self.playing[ctx.message.server.id]
