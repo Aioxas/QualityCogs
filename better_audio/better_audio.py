@@ -192,8 +192,8 @@ class BetterAudio:
         if ctx.message.author.voice_channel is None:
             await self.bot.say("You need to be in a voice channel.")
             return
-        if re.match(r"^http(s)?://soundcloud\.com/[0-9a-zA-Z\-]*/[0-9a-zA-Z\-]*", url) or \
-                re.match(r"^http(s)?://twitch\.tv/[0-9a-zA-Z\-]*$", url) or \
+        if re.match(r"^http(s)?://soundcloud\.com/[0-9a-zA-Z\-_]*/[0-9a-zA-Z\-_]*", url) or \
+                re.match(r"^http(s)?://twitch\.tv/[0-9a-zA-Z\-_]*$", url) or \
                 re.match(r"^http(s)?://(www.)?(m.)?youtube\.com/watch\?v=.{11}$", url):  # match supported links
             info = self.get_url_info(url)
             if "entries" in info:
