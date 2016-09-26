@@ -46,8 +46,8 @@ class BetterAudio:
 
     async def maintenance_loop(self):
         while True:
-            for server in self.bot.servers:  # set nonexistent voice clients and players to None
-                if server.id not in self.players:
+            for server in self.bot.servers:
+                if server.id not in self.players:  # set nonexistent voice clients and players to None
                     self.players[server.id] = None
                 if server.id not in self.queues:  # create queues
                     self.queues[server.id] = []
@@ -57,9 +57,22 @@ class BetterAudio:
                     self.db[server.id]["volume"] = 1.0
                 if "vote_percentage" not in self.db[server.id]:
                     self.db[server.id]["vote_percentage"] = 0.5
+                if "intentional_disconnect" not in self.db[server.id]:
+                    self.db[server.id]["intentional_disconnect"] = True
+                if "connected_channel" not in self.db[server.id]:
+                    self.db[server.id]["connected_channel"] = None
                 if server.id not in self.skip_votes:  # create skip_votes list of Members
                     self.skip_votes[server.id] = []
                 self.voice_clients[server.id] = self.bot.voice_client_in(server)
+
+                if not self.db[server.id]["intentional_disconnect"]:
+                    if self.db[server.id]["connected_channel"] is not None:
+                        channel = self.bot.get_channel(self.db[server.id]["connected_channel"])
+                        if self.voice_clients[server.id] is None:
+                            try:
+                                await self.bot.join_voice_channel(channel)
+                            except discord.InvalidArgument:
+                                pass
 
             for sid in self.players:  # clean up dead players
                 player = self.players[sid]
@@ -175,8 +188,10 @@ class BetterAudio:
         """Summons the bot to your voice channel."""
         if ctx.message.author.voice_channel is not None:
             if self.voice_clients[ctx.message.server.id] is None:
-                self.voice_clients[ctx.message.server.id] = \
-                    await self.bot.join_voice_channel(ctx.message.author.voice_channel)
+                await self.bot.join_voice_channel(ctx.message.author.voice_channel)
+                self.db[ctx.message.server.id]["intentional_disconnect"] = False
+                self.db[ctx.message.server.id]["connected_channel"] = ctx.message.author.voice_channel.id
+                self.save_db()
                 await self.bot.say("Summoned to {0} successfully!".format(str(ctx.message.author.voice_channel)))
             else:
                 await self.bot.say("I'm already in your channel!")
@@ -298,6 +313,9 @@ class BetterAudio:
         if self.players[ctx.message.server.id] is not None:
             self.players[ctx.message.server.id].stop()
         if self.voice_clients[ctx.message.server.id] is not None:
+            self.db[ctx.message.server.id]["intentional_disconnect"] = True
+            self.db[ctx.message.server.id]["connected_channel"] = None
+            self.save_db()
             await self.voice_clients[ctx.message.server.id].disconnect()
             await self.bot.say("Disconnected.")
 
