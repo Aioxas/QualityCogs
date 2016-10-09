@@ -13,6 +13,7 @@ from cogs.utils import chat_formatting
 
 class BetterAudio:
     """Pandentia's Better Audio"""
+
     def __init__(self, bot):
         self.bot = bot
         try:
@@ -71,7 +72,7 @@ class BetterAudio:
                         if self.voice_clients[server.id] is None:
                             try:
                                 await self.bot.join_voice_channel(channel)
-                            except discord.InvalidArgument:
+                            except:  # too broad, I know, but we can't risk crashing the loop because of this
                                 pass
 
             for sid in self.players:  # clean up dead players
@@ -208,8 +209,8 @@ class BetterAudio:
             await self.bot.say("You need to be in a voice channel.")
             return
         if re.match(r"^http(s)?://soundcloud\.com/[0-9a-zA-Z\-_]*/[0-9a-zA-Z\-_]*", url) or \
-                re.match(r"^http(s)?://twitch\.tv/[0-9a-zA-Z\-_]*$", url) or \
-                re.match(r"^http(s)?://(www.)?(m.)?youtube\.com/watch\?v=.{11}$", url):  # match supported links
+                re.match(r"^http(s)?://(www\.)?twitch\.tv/[0-9a-zA-Z\-_]*$", url) or \
+                re.match(r"^http(s)?://(www\.)?(m\.)?youtube\.com/watch\?v=.{11}$", url):  # match supported links
             info = self.get_url_info(url)
             if "entries" in info:
                 await self.bot.say("Adding a playlist, this may take a while...")
@@ -333,7 +334,7 @@ class BetterAudio:
     @audioset_cmd.command(pass_context=True, no_pm=True)
     async def volume(self, ctx, volume: int):
         """Sets the audio volume for this server."""
-        if 0 < volume < 200:
+        if 0 <= volume <= 200:
             volume /= 100
             self.db[ctx.message.server.id]["volume"] = volume
             self.save_db()
@@ -373,5 +374,4 @@ class BetterAudio:
 
 
 def setup(bot):
-    n = BetterAudio(bot)
-    bot.add_cog(n)
+    bot.add_cog(BetterAudio(bot))
