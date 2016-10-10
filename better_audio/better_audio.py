@@ -45,6 +45,11 @@ class BetterAudio:
         with youtube_dl.YoutubeDL({}) as yt:
             return yt.extract_info(url, download=False, process=False)
 
+    async def set_status(self, status):
+        if status is not self.old_status:
+            self.old_status = status
+            await self.bot.change_presence(game=discord.Game(name=status))
+
     async def maintenance_loop(self):
         while True:
             for server in self.bot.servers:
@@ -139,9 +144,7 @@ class BetterAudio:
 
                 if self.db["global"]["playing_status"]:
                     if len(self.playing) == 0:
-                        if self.old_status is not None:
-                            await self.bot.change_status(game=None)
-                            self.old_status = None
+                        await self.set_status(None)
                     elif len(self.playing) == 1:
                         # noinspection PyBroadException
                         try:
@@ -150,20 +153,14 @@ class BetterAudio:
                                     playing = self.playing[i]
                             # noinspection PyUnboundLocalVariable
                             status = "{title} - {author}".format(**playing)
-                            if status != self.old_status:
-                                await self.bot.change_status(game=discord.Game(name=status))
-                                self.old_status = status
+                            await self.set_status(status)
                         except:
                             pass
                     else:
                         status = "music on {0} servers".format(len(self.playing))
-                        if status != self.old_status:
-                            await self.bot.change_status(game=discord.Game(name=status))
-                            self.old_status = status
+                        await self.set_status(status)
                 else:
-                    if self.old_status is not None:
-                        await self.bot.change_status(game=None)
-                        self.old_status = None
+                    await self.set_status(None)
 
             await asyncio.sleep(1)
 
