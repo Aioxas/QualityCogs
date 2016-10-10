@@ -142,25 +142,26 @@ class BetterAudio:
                         except ZeroDivisionError:
                             pass
 
-                if self.db["global"]["playing_status"]:
-                    if len(self.playing) == 0:
-                        await self.set_status(None)
-                    elif len(self.playing) == 1:
-                        # noinspection PyBroadException
-                        try:
-                            for i in self.playing:
-                                if self.playing[i] != {}:
-                                    playing = self.playing[i]
-                            # noinspection PyUnboundLocalVariable
-                            status = "{title} - {author}".format(**playing)
-                            await self.set_status(status)
-                        except:
-                            pass
-                    else:
-                        status = "music on {0} servers".format(len(self.playing))
-                        await self.set_status(status)
-                else:
+            if self.db["global"]["playing_status"]:
+                playing_servers = len(self.playing)
+                if playing_servers == 0:
                     await self.set_status(None)
+                elif playing_servers == 1:
+                    # noinspection PyBroadException
+                    try:
+                        for i in self.playing:
+                            if self.playing[i] != {}:
+                                playing = self.playing[i]
+                        # noinspection PyUnboundLocalVariable
+                        status = "{title} - {author}".format(**playing)
+                        await self.set_status(status)
+                    except:
+                        pass
+                else:
+                    status = "music on {0} servers".format(playing_servers)
+                    await self.set_status(status)
+            else:
+                await self.set_status(None)
 
             await asyncio.sleep(1)
 
