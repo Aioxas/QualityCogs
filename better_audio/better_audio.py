@@ -58,6 +58,7 @@ class BetterAudio:
 
     async def maintenance_loop(self):
         while True:
+            old_db = self.db
             for server in self.bot.servers:
                 if server.id not in self.players:  # set nonexistent voice clients and players to None
                     self.players[server.id] = None
@@ -103,7 +104,6 @@ class BetterAudio:
 
             if "global" not in self.db:
                 self.db["global"] = {"playing_status": False}
-                self.save_db()
 
             # Queue processing:
             for sid in self.voice_clients:
@@ -175,6 +175,9 @@ class BetterAudio:
                     await self.set_status(status)
             else:
                 await self.set_status(None)
+
+            if self.db != old_db:
+                self.save_db()
 
             await asyncio.sleep(1)
 
