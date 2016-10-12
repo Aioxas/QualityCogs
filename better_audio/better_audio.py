@@ -27,6 +27,7 @@ class BetterAudio:
         self.voice_clients = {}  # voice clients
         self.players = {}  # players
         self.old_status = None  # remembering the old status messages so we don't abuse the Discord API
+        self.user_cache = {}
 
     def __unload(self):
         self.loop.cancel()
@@ -44,6 +45,11 @@ class BetterAudio:
     def get_url_info(self, url):
         with youtube_dl.YoutubeDL({}) as yt:
             return yt.extract_info(url, download=False, process=False)
+
+    async def get_user(self, uid):
+        if uid not in self.user_cache:
+            self.user_cache[uid] = await self.bot.get_user_info(uid)
+        return self.user_cache[uid]
 
     async def set_status(self, status):
         if status is not self.old_status:
@@ -118,7 +124,8 @@ class BetterAudio:
                             self.playing[sid]["title"] = next_song["title"]
                             self.playing[sid]["author"] = next_song["author"]
                             self.playing[sid]["url"] = next_song["url"]
-                            self.playing[sid]["song_owner"] = next_song["song_owner"]
+                            self.playing[sid]["song_owner"] = await self.get_user(next_song["song_owner"])
+                            self.playing[sid]["paused"] = False
                         except:  # in case something bad happens, crashing the loop is *really* undesirable
                             pass
                     else:
@@ -128,8 +135,10 @@ class BetterAudio:
                         members = self.get_eligible_members(voice_client.channel.voice_members)
                         if len(members) > 0 and not self.players[sid].is_live:
                             self.players[sid].resume()
+                            self.playing[sid]["paused"] = False
                         if len(members) == 0 and not self.players[sid].is_live:
                             self.players[sid].pause()
+                            self.playing[sid]["paused"] = True
                         try:
                             possible_voters = len(self.get_eligible_members(voice_client.channel.voice_members))
                             votes = 0
@@ -143,7 +152,11 @@ class BetterAudio:
                             pass
 
             if self.db["global"]["playing_status"]:
-                playing_servers = len(self.playing)
+                playing_servers = 0
+                for server in self.playing:
+                    if self.playing[server] != {}:
+                        if not self.playing[server]["paused"]:
+                            playing_servers += 1
                 if playing_servers == 0:
                     await self.set_status(None)
                 elif playing_servers == 1:
@@ -200,6 +213,7 @@ class BetterAudio:
     @commands.command(pass_context=True, name="play", no_pm=True)
     async def play_cmd(self, ctx, url: str, playlist_length: int=999):
         """Plays a SoundCloud or Twitch link."""
+        await self.bot.get_user_info(ctx.message.author.id)  # just to cache it preemptively
         if self.voice_clients[ctx.message.server.id] is None:
             await self.bot.say("You need to summon me first.")
             return
@@ -228,7 +242,7 @@ class BetterAudio:
                         info = self.get_url_info(url)
                         title = info["title"]
                         author = info["uploader"]
-                        assembled_queue = {"url": url, "song_owner": ctx.message.author,
+                        assembled_queue = {"url": url, "song_owner": ctx.message.author.id,
                                            "title": title, "author": author}
                         self.queues[ctx.message.server.id].append(assembled_queue)
                         added += 1
@@ -243,7 +257,7 @@ class BetterAudio:
             else:
                 title = info["title"]
                 author = info["uploader"]
-                assembled_queue = {"url": url, "song_owner": ctx.message.author, "title": title, "author": author}
+                assembled_queue = {"url": url, "song_owner": ctx.message.author.id, "title": title, "author": author}
                 self.queues[ctx.message.server.id].append(assembled_queue)
                 await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
         else:
@@ -257,8 +271,9 @@ class BetterAudio:
             number = 1
             human_queue = ""
             for i in queue:
+                song_owner = await self.get_user(i["song_owner"])
                 human_queue += "**{0}".format(number) + ".** **{author}** - " \
-                                                        "**{title}** added by {song_owner}\n".format(**i)
+                                                        "**{title}** added by {0}\n".format(song_owner, **i)
                 number += 1
             paged = chat_formatting.pagify(human_queue, "\n")  # pagify the output, so we don't hit the 2000 character
             #                                                    limit
