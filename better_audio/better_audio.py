@@ -374,11 +374,6 @@ class BetterAudio:
         else:
             await self.bot.say("Try a threshold between 0 and 100.")
 
-    @checks.mod_or_permissions(move_members=True)
-    @audioset_cmd.command(pass_context=True, no_pm=True)
-    async def lock(self):
-        """Locks the bot to your voice channel and summons it there permanently."""
-
     @checks.is_owner()
     @audioset_cmd.command()
     async def status(self):
