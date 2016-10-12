@@ -73,6 +73,8 @@ class BetterAudio:
                     self.db[server.id]["connected_channel"] = None
                 if "queue" not in self.db[server.id]:  # create queues
                     self.db[server.id]["queue"] = []
+                if "repeat" not in self.db[server.id]:  # repeat mode, off by default
+                    self.db[server.id]["repeat"] = False
                 if server.id not in self.skip_votes:  # create skip_votes list of Members
                     self.skip_votes[server.id] = []
                 self.voice_clients[server.id] = self.bot.voice_client_in(server)
@@ -116,7 +118,10 @@ class BetterAudio:
                             self.playing[sid] = {}
                             self.skip_votes[sid] = []
                             next_song = queue.pop(0)
+                            if self.db[sid]["repeat"]:
+                                self.db[sid]["queue"].append(next_song)
                             self.save_db()
+
                             url = next_song["url"]
                             self.players[sid] = await self.voice_clients[sid].create_ytdl_player(url)
                             self.players[sid].volume = self.db[sid]["volume"]
@@ -373,6 +378,19 @@ class BetterAudio:
             await self.bot.say("Skip threshold set to {0}%.".format(int(percentage * 100)))
         else:
             await self.bot.say("Try a threshold between 0 and 100.")
+
+    @checks.mod_or_permissions(move_members=True)
+    @audioset_cmd.command(pass_context=True, no_pm=True)
+    async def repeat(self, ctx):
+        """Toggles repeat mode for the current server."""
+        if self.db[ctx.message.server.id]["repeat"]:
+            self.db[ctx.message.server.id]["repeat"] = False
+            self.save_db()
+            await self.bot.say("Repeat mode disabled.")
+        elif not self.db[ctx.message.server.id]["repeat"]:
+            self.db[ctx.message.server.id]["repeat"] = True
+            self.save_db()
+            await self.bot.say("Repeat mode enabled.")
 
     @checks.is_owner()
     @audioset_cmd.command()
