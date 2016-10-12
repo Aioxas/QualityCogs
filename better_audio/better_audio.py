@@ -34,14 +34,16 @@ class BetterAudio:
     def save_db(self):
         dataIO.save_json("./data/better_audio.json", self.db)
 
-    def get_eligible_members(self, members):
+    @staticmethod
+    def get_eligible_members(members):
         eligible = []
         for member in members:
             if not member.bot and not member.self_deaf:
                 eligible.append(member)
         return eligible
 
-    def get_url_info(self, url):
+    @staticmethod
+    def get_url_info(url):
         with youtube_dl.YoutubeDL({}) as yt:
             return yt.extract_info(url, download=False, process=False)
 
