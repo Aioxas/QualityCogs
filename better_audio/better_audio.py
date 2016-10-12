@@ -22,7 +22,6 @@ class BetterAudio:
             self.db = {}
         self.loop = self.bot.loop.create_task(self.maintenance_loop())
         self.playing = {}  # what's playing, imported from queue
-        self.queues = {}  # what's in the queue
         self.skip_votes = {}  # votes to skip, per song
         self.voice_clients = {}  # voice clients
         self.players = {}  # players
@@ -62,8 +61,6 @@ class BetterAudio:
             for server in self.bot.servers:
                 if server.id not in self.players:  # set nonexistent voice clients and players to None
                     self.players[server.id] = None
-                if server.id not in self.queues:  # create queues
-                    self.queues[server.id] = []
                 if server.id not in self.db:  # set defaults for servers
                     self.db[server.id] = {}
                 if "volume" not in self.db[server.id]:  # backwards-compatibility
@@ -74,6 +71,8 @@ class BetterAudio:
                     self.db[server.id]["intentional_disconnect"] = True
                 if "connected_channel" not in self.db[server.id]:
                     self.db[server.id]["connected_channel"] = None
+                if "queue" not in self.db[server.id]:  # create queues
+                    self.db[server.id]["queue"] = []
                 if server.id not in self.skip_votes:  # create skip_votes list of Members
                     self.skip_votes[server.id] = []
                 self.voice_clients[server.id] = self.bot.voice_client_in(server)
@@ -109,7 +108,7 @@ class BetterAudio:
             for sid in self.voice_clients:
                 voice_client = self.voice_clients[sid]
                 player = self.players[sid]
-                queue = self.queues[sid]
+                queue = self.db[sid]["queue"]
                 if voice_client is not None:
                     if player is None:
                         # noinspection PyBroadException
@@ -117,6 +116,7 @@ class BetterAudio:
                             self.playing[sid] = {}
                             self.skip_votes[sid] = []
                             next_song = queue.pop(0)
+                            self.save_db()
                             url = next_song["url"]
                             self.players[sid] = await self.voice_clients[sid].create_ytdl_player(url)
                             self.players[sid].volume = self.db[sid]["volume"]
@@ -247,7 +247,7 @@ class BetterAudio:
                         author = info["uploader"]
                         assembled_queue = {"url": url, "song_owner": ctx.message.author.id,
                                            "title": title, "author": author}
-                        self.queues[ctx.message.server.id].append(assembled_queue)
+                        self.db[ctx.message.server.id]["queue"].append(assembled_queue)
                         added += 1
                         placeholder_msg = await self.bot.edit_message(placeholder_msg,
                                                                       "Successfully added {1} - {0} to the queue!\n"
@@ -256,12 +256,14 @@ class BetterAudio:
                         await asyncio.sleep(1)
                     except:
                         await self.bot.say("Unable to add <{0}> to the queue. Skipping.".format(url))
+                self.save_db()
                 await self.bot.say("Added {0} tracks to the queue.".format(added))
             else:
                 title = info["title"]
                 author = info["uploader"]
                 assembled_queue = {"url": url, "song_owner": ctx.message.author.id, "title": title, "author": author}
-                self.queues[ctx.message.server.id].append(assembled_queue)
+                self.db[ctx.message.server.id]["queue"].append(assembled_queue)
+                self.save_db()
                 await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
         else:
             await self.bot.say("That URL is unsupported right now.")
@@ -269,7 +271,7 @@ class BetterAudio:
     @commands.command(pass_context=True, name="queue", no_pm=True)
     async def queue_cmd(self, ctx):
         """Shows the queue for the current server."""
-        queue = self.queues[ctx.message.server.id]
+        queue = self.db[ctx.message.server.id]["queue"]
         if queue:
             number = 1
             human_queue = ""
@@ -300,7 +302,8 @@ class BetterAudio:
     async def stop(self, ctx):
         """Be warned, this clears the queue and stops playback."""
         self.playing[ctx.message.server.id] = {}
-        self.queues[ctx.message.server.id] = []
+        self.db[ctx.message.server.id]["queue"] = []
+        self.save_db()
         if self.players[ctx.message.server.id] is not None:
             self.players[ctx.message.server.id].stop()
         await self.bot.say("Playback stopped.")
@@ -309,9 +312,10 @@ class BetterAudio:
     @commands.command(pass_context=True, no_pm=True)
     async def shuffle(self, ctx):
         """Shuffles the queue."""
-        queue = self.queues[ctx.message.server.id]
+        queue = self.db[ctx.message.server.id]["queue"]
         random.shuffle(queue)
-        self.queues[ctx.message.server.id] = queue
+        self.db[ctx.message.server.id]["queue"] = queue
+        self.save_db()
         await self.bot.say("Queue shuffled.")
 
     @checks.mod_or_permissions(move_members=True)
