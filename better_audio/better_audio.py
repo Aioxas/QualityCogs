@@ -1,7 +1,6 @@
 import asyncio
 import discord
 import youtube_dl
-import re
 import random
 # noinspection PyUnresolvedReferences
 from __main__ import send_cmd_help
@@ -9,6 +8,7 @@ from discord.ext import commands
 from cogs.utils import checks
 from cogs.utils.dataIO import dataIO
 from cogs.utils import chat_formatting
+from youtube_dl.utils import DownloadError
 
 
 class BetterAudio:
@@ -85,6 +85,7 @@ class BetterAudio:
                     if self.db[server.id]["connected_channel"] is not None:
                         channel = self.bot.get_channel(self.db[server.id]["connected_channel"])
                         if self.voice_clients[server.id] is None:
+                            # noinspection PyBroadException
                             try:
                                 await self.bot.join_voice_channel(channel)
                             except:  # too broad, I know, but we can't risk crashing the loop because of this
@@ -221,8 +222,10 @@ class BetterAudio:
             await self.bot.say("You need to join a voice channel first.")
 
     @commands.command(pass_context=True, name="play", no_pm=True)
-    async def play_cmd(self, ctx, url: str, playlist_length: int=999):
+    async def play_cmd(self, ctx, url: str, playlist_length: int=None):
         """Plays a SoundCloud or Twitch link."""
+        if playlist_length is None:
+            playlist_length = 10000
         await self.bot.get_user_info(ctx.message.author.id)  # just to cache it preemptively
         if self.voice_clients[ctx.message.server.id] is None:
             await self.bot.say("You need to summon me first.")
@@ -230,48 +233,62 @@ class BetterAudio:
         if ctx.message.author.voice_channel is None:
             await self.bot.say("You need to be in a voice channel.")
             return
-        if re.match(r"^http(s)?://soundcloud\.com/[0-9a-zA-Z\-_]*/[0-9a-zA-Z\-_]*", url) or \
-                re.match(r"^http(s)?://(www\.)?twitch\.tv/[0-9a-zA-Z\-_]*$", url) or \
-                re.match(r"^http(s)?://(www\.)?(m\.)?youtube\.com/watch\?v=.{11}$", url):  # match supported links
-            info = self.get_url_info(url)
-            if "entries" in info:
-                await self.bot.say("Adding a playlist, this may take a while...")
-                placeholder_msg = await self.bot.say("​")
-                added = 0
-                total = len(info["entries"])
-                length = playlist_length
-                urls = []
-                for i in info["entries"]:
-                    if length != 0:
-                        urls.append(i["url"])
-                        length -= 1
+        try:
+            await self.bot.send_typing(ctx.message.channel)
+            info = self.get_url_info(url)  # probably the best URL matching that's out there
+            try:  # for bit.ly URLs, etc...
+                if info["extractor"] == "generic":
+                    info = self.get_url_info(info["url"])
+            except KeyError:
+                pass
+        except DownloadError:
+            await self.bot.say("That URL is unsupported right now.")
+            return
+        if info["extractor"] in ["youtube", "soundcloud"]:
+            title = info["title"]
+            author = info["uploader"]
+            assembled_queue = {"url": url, "song_owner": ctx.message.author.id, "title": title, "author": author}
+            self.db[ctx.message.server.id]["queue"].append(assembled_queue)
+            self.save_db()
+            await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
+        elif info["extractor"] in ["twitch:stream"]:
+            title = info["description"]
+            author = info["uploader"]
+            assembled_queue = {"url": url, "song_owner": ctx.message.author.id, "title": title, "author": author}
+            self.db[ctx.message.server.id]["queue"].append(assembled_queue)
+            self.save_db()
+            await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
+        elif info["extractor"] in ["soundcloud:set"]:
+            await self.bot.say("Adding a playlist, this may take a while...")
+            placeholder_msg = await self.bot.say("​")
+            added = 0
+            total = len(info["entries"])
+            length = playlist_length
+            urls = []
+            for i in info["entries"]:
+                if length != 0:
+                    urls.append(i["url"])
+                    length -= 1
 
-                for url in urls:
-                    # noinspection PyBroadException
-                    try:
-                        info = self.get_url_info(url)
-                        title = info["title"]
-                        author = info["uploader"]
-                        assembled_queue = {"url": url, "song_owner": ctx.message.author.id,
-                                           "title": title, "author": author}
-                        self.db[ctx.message.server.id]["queue"].append(assembled_queue)
-                        added += 1
-                        placeholder_msg = await self.bot.edit_message(placeholder_msg,
-                                                                      "Successfully added {1} - {0} to the queue!\n"
-                                                                      "({2}/{3})"
-                                                                      .format(title, author, added, total))
-                        await asyncio.sleep(1)
-                    except:
-                        await self.bot.say("Unable to add <{0}> to the queue. Skipping.".format(url))
-                self.save_db()
-                await self.bot.say("Added {0} tracks to the queue.".format(added))
-            else:
-                title = info["title"]
-                author = info["uploader"]
-                assembled_queue = {"url": url, "song_owner": ctx.message.author.id, "title": title, "author": author}
-                self.db[ctx.message.server.id]["queue"].append(assembled_queue)
-                self.save_db()
-                await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
+            for url in urls:
+                # noinspection PyBroadException
+                try:
+                    info = self.get_url_info(url)
+                    title = info["title"]
+                    author = info["uploader"]
+                    assembled_queue = {"url": url, "song_owner": ctx.message.author.id,
+                                       "title": title, "author": author}
+                    self.db[ctx.message.server.id]["queue"].append(assembled_queue)
+                    added += 1
+                    placeholder_msg = await self.bot.edit_message(placeholder_msg,
+                                                                  "Successfully added {1} - {0} to the queue!\n"
+                                                                  "({2}/{3})"
+                                                                  .format(title, author, added, total))
+                    await asyncio.sleep(1)
+                except:
+                    await self.bot.say("Unable to add <{0}> to the queue. Skipping.".format(url))
+            self.save_db()
+            await self.bot.say("Added {0} tracks to the queue.".format(added))
         else:
             await self.bot.say("That URL is unsupported right now.")
 
