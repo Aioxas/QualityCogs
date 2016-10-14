@@ -126,9 +126,9 @@ class BetterAudio:
                             self.save_db()
 
                             url = next_song["url"]
-                            self.players[sid] = await self.voice_clients[sid].create_ytdl_player(url)
-                            self.players[sid].volume = self.db[sid]["volume"]
-                            self.players[sid].start()
+                            player = self.players[sid] = await self.voice_clients[sid].create_ytdl_player(url)
+                            player.volume = self.db[sid]["volume"]
+                            player.start()
                             self.playing[sid]["title"] = next_song["title"]
                             self.playing[sid]["author"] = next_song["author"]
                             self.playing[sid]["url"] = next_song["url"]
@@ -138,14 +138,14 @@ class BetterAudio:
                             pass
                     else:
                         if player.volume != self.db[sid]["volume"]:  # set volume while player is playing
-                            self.players[sid].volume = float(self.db[sid]["volume"])
+                            player.volume = float(self.db[sid]["volume"])
 
                         members = self.get_eligible_members(voice_client.channel.voice_members)
                         if len(members) > 0 and not self.players[sid].is_live:
-                            self.players[sid].resume()
+                            player[sid].resume()
                             self.playing[sid]["paused"] = False
                         if len(members) == 0 and not self.players[sid].is_live:
-                            self.players[sid].pause()
+                            player[sid].pause()
                             self.playing[sid]["paused"] = True
                         try:
                             possible_voters = len(self.get_eligible_members(voice_client.channel.voice_members))
@@ -155,7 +155,7 @@ class BetterAudio:
                                     votes += 1
 
                             if (votes / possible_voters) > float(self.db[sid]["vote_percentage"]):
-                                self.players[sid].stop()
+                                player.stop()
                         except ZeroDivisionError:
                             pass
 
