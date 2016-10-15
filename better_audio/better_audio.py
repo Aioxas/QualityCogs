@@ -126,9 +126,9 @@ class BetterAudio:
                             self.save_db()
 
                             url = next_song["url"]
-                            player = self.players[sid] = await self.voice_clients[sid].create_ytdl_player(url)
-                            player.volume = self.db[sid]["volume"]
-                            player.start()
+                            self.players[sid] = await self.voice_clients[sid].create_ytdl_player(url)
+                            self.players[sid].volume = self.db[sid]["volume"]
+                            self.players[sid].start()
                             self.playing[sid]["title"] = next_song["title"]
                             self.playing[sid]["author"] = next_song["author"]
                             self.playing[sid]["url"] = next_song["url"]
@@ -138,14 +138,14 @@ class BetterAudio:
                             pass
                     else:
                         if player.volume != self.db[sid]["volume"]:  # set volume while player is playing
-                            player.volume = float(self.db[sid]["volume"])
+                            self.players[sid].volume = float(self.db[sid]["volume"])
 
                         members = self.get_eligible_members(voice_client.channel.voice_members)
                         if len(members) > 0 and not self.players[sid].is_live:
-                            player[sid].resume()
+                            self.players[sid].resume()
                             self.playing[sid]["paused"] = False
                         if len(members) == 0 and not self.players[sid].is_live:
-                            player[sid].pause()
+                            self.players[sid].pause()
                             self.playing[sid]["paused"] = True
                         try:
                             possible_voters = len(self.get_eligible_members(voice_client.channel.voice_members))
