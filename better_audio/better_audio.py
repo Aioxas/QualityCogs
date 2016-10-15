@@ -1,6 +1,8 @@
+import aiohttp
 import asyncio
 import discord
 import youtube_dl
+import re
 import random
 # noinspection PyUnresolvedReferences
 from __main__ import send_cmd_help
@@ -235,6 +237,12 @@ class BetterAudio:
             return
         try:
             await self.bot.send_typing(ctx.message.channel)
+            if url.endswith(".pls") or url.endswith(".m3u"):
+                async with aiohttp.get(url) as r:
+                    urls = str(await r.text())
+                    if "icy://" in urls:
+                        urls = urls.replace("icy://", "http://")
+                    url = re.findall(r"(http(s)?:\/\/[a-zA-Z0-9\:\.\-\_\/\?\=\%]*)", urls)[0][0]
             info = self.get_url_info(url)  # probably the best URL matching that's out there
             try:  # for bit.ly URLs, etc...
                 if info["extractor"] == "generic":
@@ -251,6 +259,17 @@ class BetterAudio:
             self.db[ctx.message.server.id]["queue"].append(assembled_queue)
             self.save_db()
             await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
+        elif info["extractor"] == 'generic' and info["formats"][0]["format_id"] == "mpeg" \
+                or info["formats"][0]["format_id"] == "flac":
+            title = info["title"]
+            try:
+                author = info["uploader"]
+            except KeyError:
+                author = url.split("/")[2]
+            assembled_queue = {"url": url, "song_owner": ctx.message.author.id, "title": title, "author": author}
+            self.db[ctx.message.server.id]["queue"].append(assembled_queue)
+            self.save_db()
+            await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
         elif info["extractor"] in ["twitch:stream"]:
             title = info["description"]
             author = info["uploader"]
@@ -258,14 +277,15 @@ class BetterAudio:
             self.db[ctx.message.server.id]["queue"].append(assembled_queue)
             self.save_db()
             await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
-        elif info["extractor"] in ["soundcloud:set"]:
+        elif info["extractor"] in ["soundcloud:set", "youtube:playlist"]:
             await self.bot.say("Adding a playlist, this may take a while...")
             placeholder_msg = await self.bot.say("​")
+            playlist = [x for x in info["entries"]]
             added = 0
-            total = len(info["entries"])
+            total = len(playlist)
             length = playlist_length
             urls = []
-            for i in info["entries"]:
+            for i in playlist:
                 if length != 0:
                     urls.append(i["url"])
                     length -= 1
