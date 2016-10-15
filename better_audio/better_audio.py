@@ -367,7 +367,7 @@ class BetterAudio:
     @commands.command()
     async def audio_source(self):
         """Where the source code for this audio cog can be found."""
-        await self.bot.say("https://github.com/Pandentia/Red-Cogs/")
+        await self.bot.say("https://github.com/QualityCogs/QualityCogs/")
 
     @commands.group(name="audioset", pass_context=True, invoke_without_command=True)
     async def audioset_cmd(self, ctx):
