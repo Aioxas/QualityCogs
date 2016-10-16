@@ -259,17 +259,6 @@ class BetterAudio:
             self.db[ctx.message.server.id]["queue"].append(assembled_queue)
             self.save_db()
             await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
-        elif info["extractor"] == 'generic' and info["formats"][0]["format_id"] == "mpeg" \
-                or info["formats"][0]["format_id"] == "flac":
-            title = info["title"]
-            try:
-                author = info["uploader"]
-            except KeyError:
-                author = url.split("/")[2]
-            assembled_queue = {"url": url, "song_owner": ctx.message.author.id, "title": title, "author": author}
-            self.db[ctx.message.server.id]["queue"].append(assembled_queue)
-            self.save_db()
-            await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
         elif info["extractor"] in ["twitch:stream"]:
             title = info["description"]
             author = info["uploader"]
@@ -309,6 +298,17 @@ class BetterAudio:
                     await self.bot.say("Unable to add <{0}> to the queue. Skipping.".format(url))
             self.save_db()
             await self.bot.say("Added {0} tracks to the queue.".format(added))
+        elif info["extractor"] == 'generic' and info["formats"][0]["format_id"] == "mpeg" \
+                or info["formats"][0]["format_id"] == "flac":
+            title = info["title"]
+            try:
+                author = info["uploader"]
+            except KeyError:
+                author = url.split("/")[2]
+            assembled_queue = {"url": url, "song_owner": ctx.message.author.id, "title": title, "author": author}
+            self.db[ctx.message.server.id]["queue"].append(assembled_queue)
+            self.save_db()
+            await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
         else:
             await self.bot.say("That URL is unsupported right now.")
 
