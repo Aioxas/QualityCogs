@@ -67,6 +67,37 @@ class BetterAudio:
             self.user_cache[uid] = await self.bot.get_user_info(uid)
         return self.user_cache[uid]
 
+    async def parse_playlist(self, ctx, entries, length):
+        playlist = [x for x in entries]
+        added = 0
+        # total = len(playlist)
+        urls = []
+        for i in playlist:
+            if length != 0:
+                urls.append(i["url"])
+                length -= 1
+
+        for url in urls:
+            # noinspection PyBroadException
+            try:
+                info = self.get_url_info(url)
+                title = info["title"]
+                author = info["uploader"]
+                assembled_queue = {"url": url, "song_owner": ctx.message.author.id,
+                                   "title": title, "author": author}
+                self.db[ctx.message.server.id][
+                    "queue"].append(assembled_queue)
+                added += 1
+                # placeholder_msg = await self.bot.edit_message(placeholder_msg,
+                #                                              "Successfully added {1} - {0} to the queue!\n"
+                #                                              "({2}/{3})"
+                #                                              .format(title, author, added, total))
+                # await asyncio.sleep(1)
+            except:
+                await self.bot.send_message(ctx.message.channel,
+                                            "Unable to add <{0}> to the queue. Skipping.".format(url))
+        return added
+
     async def set_status(self, status):
         if status is not self.old_status:
             self.old_status = status
@@ -171,8 +202,6 @@ class BetterAudio:
                         if self.players[sid].volume != self.db[sid]["volume"]:
                             self.players[sid].volume = float(
                                 self.db[sid]["volume"])
-                        # if self.db[sid]["stream"]:
-                        #     self.bot.loop.create_task(self.metadata_loop())
                         members = self.get_eligible_members(
                             voice_client.channel.voice_members)
                         if len(members) > 0 and not self.players[sid].is_live:
@@ -344,6 +373,8 @@ class BetterAudio:
         if ctx.message.author.voice_channel is None:
             await self.bot.say("You need to be in a voice channel.")
             return
+        if url.startswith("icy://"):
+            url = url[len("icy://"):]
         try:
             await self.bot.send_typing(ctx.message.channel)
             if url.endswith(".pls") or url.endswith(".m3u"):
@@ -361,7 +392,7 @@ class BetterAudio:
             except KeyError:
                 pass
         except DownloadError:
-            await self.bot.say("That URL is unsupported right now.")
+            await self.bot.say("That URL is unsupported right now. Meow")
             return
         if info["extractor"] in ["youtube", "soundcloud"]:
             title = info["title"]
@@ -381,67 +412,22 @@ class BetterAudio:
             await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
         elif info["extractor"] in ["soundcloud:set", "youtube:playlist"]:
             await self.bot.say("Adding a playlist, this may take a while...")
-            placeholder_msg = await self.bot.say("​")
-            playlist = [x for x in info["entries"]]
-            added = 0
-            total = len(playlist)
-            length = playlist_length
-            urls = []
-            for i in playlist:
-                if length != 0:
-                    urls.append(i["url"])
-                    length -= 1
-
-            for url in urls:
-                # noinspection PyBroadException
-                try:
-                    info = self.get_url_info(url)
-                    title = info["title"]
-                    author = info["uploader"]
-                    assembled_queue = {"url": url, "song_owner": ctx.message.author.id,
-                                       "title": title, "author": author}
-                    self.db[ctx.message.server.id][
-                        "queue"].append(assembled_queue)
-                    added += 1
-                    placeholder_msg = await self.bot.edit_message(placeholder_msg,
-                                                                  "Successfully added {1} - {0} to the queue!\n"
-                                                                  "({2}/{3})"
-                                                                  .format(title, author, added, total))
-                    await asyncio.sleep(1)
-                except:
-                    await self.bot.say("Unable to add <{0}> to the queue. Skipping.".format(url))
+            # placeholder_msg = await self.bot.say("​")
+            added = await self.parse_playlist(ctx, info["entries"], playlist_length)
             self.save_db()
             await self.bot.say("Added {0} tracks to the queue.".format(added))
             # asyncio.sleep(5)
             # await self.bot.say("Do you want to save this playlist for future use?")
             # self.save()
-        elif info["extractor"] == 'generic' and info["formats"][0]["format_id"] == "mpeg":
-            async with aiohttp.get(url, headers={'Icy-MetaData': "1"}) as r:
-                urls = {k: v for k, v in dict(r.headers).items()}
-                track = None
-                regi = re.compile(b"StreamTitle=([^`]*?);")
-                if "Icy-Metaint" in urls:
-                    while not track:
-                        content = await r.content.read((int(urls["Icy-Metaint"]) + 2000))
-                        if b"StreamTitle" in content:
-                            try:
-                                track = regi.findall(content)[
-                                    0].decode("utf-8")
-                            except:
-                                content = None
-                                track = None
-                                pass
-                    author, title = track.replace("'", "").split(" - ")
-                    self.db[ctx.message.server.id]["stream"] = True
-                    self.save_db()
-                else:
-                    return
+        elif info["formats"][0]["format_id"] in ["mpeg", "rtmp", "flac"]:
+            author = None
+            title = info["webpage_url"]
 
-                assembled_queue = {
-                    "url": url, "song_owner": ctx.message.author.id, "title": title, "author": author}
-                self.db[ctx.message.server.id]["queue"].append(assembled_queue)
-                self.save_db()
-                await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
+            assembled_queue = {
+                "url": url, "song_owner": ctx.message.author.id, "title": title, "author": author}
+            self.db[ctx.message.server.id]["queue"].append(assembled_queue)
+            self.save_db()
+            await self.bot.say("Successfully added {1} - {0} to the queue!".format(title, author))
         elif info["extractor"] == 'generic':
             try:
                 title = info["title"]
@@ -615,7 +601,7 @@ class BetterAudio:
 
     @checks.is_owner()
     @audioset_cmd.command(pass_context=True)
-    async def notify_channel(self, ctx, channel: str=None):
+    async def notify_channel(self, ctx, channel: discord.Channel=None):
         """Send a message to the channel when the song changes."""
         if channel is None:
             self.db[ctx.message.server.id][
